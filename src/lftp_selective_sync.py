@@ -18,7 +18,17 @@ mysqlHost = 'localhost'
 remote = '-i %s,%s %s' % (sys.argv[0], sys.argv[1], sys.argv[2])
 remotepath = '~/private/rtorrent/data/complete451'
 localpath = '/mnt/raid5/.downloads/complete'
+requireMinimumImdbRating = True
+minimumImdbRating = 7.0
 
+def getImdbRating(imdb):
+    br = Browser()
+    link = br.open("http://www.imdb.com/title/" + imdb)
+    soup = BeautifulSoup(link.read())
+    #try :
+    i = 0
+    rating = soup.find('span',attrs={'itemprop' : 'ratingValue'}).text
+    return float(rating)
 
 def getImdbID(nfo):
     p = re.compile('tt\d{7}')  # Pattern for finding imdb id
@@ -92,7 +102,8 @@ def getMoviesToFetch(nfos):
         imdb = getImdbID(nfo)
         xbmc = xbmcHasMovie(imdb)
         if imdb and not xbmc:
-            mirrordirs.append(dir)
+            if requireMinimumImdbrating and getImdbRating(imdb) >= minimumImdbRating:
+                mirrordirs.append(dir)
         return mirrordirs
 
 
@@ -106,6 +117,7 @@ def fetchMovies(directories):
 
 
 if __name__ == "__main__":
+    print sys.argv
     nfoFiles = getRemoteNfoList()
     downMovies = getMoviesToFetch(nfoFiles)
     fetchMovies(downMovies)
