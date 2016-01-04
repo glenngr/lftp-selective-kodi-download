@@ -3,6 +3,9 @@ Created on 28. mar. 2015
 
 @author: GGreibesland
 '''
+
+from mechanize import Browser
+from BeautifulSoup import BeautifulSoup
 from subprocess import Popen, PIPE, STDOUT
 import datetime
 import MySQLdb
@@ -26,6 +29,18 @@ localpath = ''
 lftp_parallell = 4
 debug = True
 logfile = 'debug.log'
+requireMinimumImdbRating = True
+minimumImdbRating = 7.0	# Movies with rating above 7 will be allowed
+lowerImdbRating = 3.0	# Movies with rating below 3 will be allowed
+
+def getImdbRating(imdb):
+    br = Browser()
+    link = br.open("http://www.imdb.com/title/" + imdb)
+    soup = BeautifulSoup(link.read())
+    #try :
+    i = 0
+    rating = soup.find('span',attrs={'itemprop' : 'ratingValue'}).text
+    return float(rating)
 
 
 def logtofile(msg):
@@ -114,7 +129,7 @@ def getRemoteNfoList(remote=remote,remotepath=remotepath):
     commands.add('lcd temp')
     for line in mirrorFileList.split('\n'):
         if line != '':
-            commands.add('mget -d %s' % (line))
+            commands.add('mget -d "%s"' % (line))
     #print commands
     runLftp(commands)
     return mirrorFileList.split('\n')
@@ -129,19 +144,31 @@ def getMoviesToFetch(nfos):
             dir = '/'.join(nfo.split('/')[:-1])
             file = nfo[-1]
             imdb = getImdbID(nfo.replace('./', './temp/'))
-            logtofile('NFO File: ' + nfo + ', imdb id: ' + imdb)
+	    if not imdb:
+	        logtofile('No imdb id found in ' + nfo)
+            else:
+                logtofile('NFO File: ' + nfo + ', imdb id: ' + imdb)
             xbmc = xbmcHasMovie(imdb)
             if imdb and not xbmc:
-                mirrordirs.append(dir)
+                if requireMinimumImdbRating:
+		    rating = getImdbRating(imdb)
+ 		else:
+		    rating = 99.0
+		if rating >= minimumImdbRating or rating <= lowerImdbRating:
+                    mirrordirs.append(dir)
+		elif rating < minimumImdbRating:
+                    logtofile("Movie is not within the required rating score " + imdb + " with " + str(rating))
+		
     return mirrordirs
 
 
 def fetchMovies(directories):
     commands = lftpcommand(remote, remotepath)
-    commands.add('lcd %s' % (localpath))
+    commands.add('lcd "%s"' % (localpath))
     commands.add('pwd')
     for d in directories:
-        commands.add('mirror -c -P%i %s' % (lftp_parallell, d))
+       commands.add('mirror -c -P%i "%s"' % (lftp_parallell, d))
+    commands.add('quit')
     # Download
     logtofile('Running with commands: ' + commands.get())
     runLftp(commands)
