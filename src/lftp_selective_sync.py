@@ -8,13 +8,17 @@ import datetime
 import MySQLdb
 import re
 import sys
-# mirror
-#login = '{0}ftp://{1} {2}'.format(args.secure, args.site, port),
-#                 'user {0}'.format(user)
+import shutil
+import io
+import time
+import os
+
+
 mysqlLogin = 'xbmc'
 mysqlPassword = 'xbmc'
 mysqlDatabase = 'xbmc_video78'
 mysqlHost = 'localhost'
+<<<<<<< HEAD
 remote = '-i %s,%s %s' % (sys.argv[0], sys.argv[1], sys.argv[2])
 remotepath = '~/private/rtorrent/data/complete451'
 localpath = '/mnt/raid5/.downloads/complete'
@@ -29,6 +33,37 @@ def getImdbRating(imdb):
     i = 0
     rating = soup.find('span',attrs={'itemprop' : 'ratingValue'}).text
     return float(rating)
+=======
+remoteUser = ''
+remotePass = ''
+remoteHost = ''
+remotepath = ''
+localpath = ''
+lftp_parallell = 4
+debug = True
+logfile = 'debug.log'
+
+
+def logtofile(msg):
+    if debug:
+        timestamp = time.time()
+        humanreadable = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        try:
+            f = open(logfile,'a')
+            f.write(str(humanreadable) + ' ' + str(msg) + '\n')
+            f.close()
+        except IOError:
+            print 'IO error occured. Unable to write to log.'
+
+
+###############################################################################
+
+if not remoteUser or not remoteHost or not remotePass:
+    remote = '-u %s,%s %s' % (sys.argv[0], sys.argv[1], sys.argv[2])
+else:
+    remote = '-u %s,%s %s' % (remoteUser, remotePass, remoteHost)
+
+>>>>>>> 02942474179bdd06da8e4dca7ed8ce675711764b
 
 def getImdbID(nfo):
     p = re.compile('tt\d{7}')  # Pattern for finding imdb id
@@ -36,6 +71,7 @@ def getImdbID(nfo):
         nfoFile = ''.join(f.readlines())
     found = p.search(nfoFile)
     return found.group() if found else None
+
 
 def xbmcHasMovie(imdb):
     db=MySQLdb.connect(host=mysqlHost, user=mysqlLogin, passwd=mysqlPassword, db=mysqlDatabase)
@@ -47,48 +83,57 @@ def xbmcHasMovie(imdb):
     result = cursor.fetchone()[0]
     cursor.close()
     db.close()
+    logtofile('Tried %s, got: %d' % (imdb, result))
     return True if result > 0 else False
 
 
 class lftpcommand:
-    def __init(self, remoteLogin, remotePath):
+    def __init__(self, remoteLogin, remotePath):
         self.commandList = []
-
-        self.cmdpre = """<< EOF
-        open %s
-        cd %s
-        """ % (remoteLogin, remotePath)
-
-        self.cmdpost = """
-        exit
-        EOF"""
+        self.lftp_logfile = os.getcwd() + '/output.log'
+        self.lftpsettings = 'set xfer:eta-period 5;set xfer:log true\,set xfer:log-file %s;set xfer:rate-period 20;' % (self.lftp_logfile)
+        self.cmdpre = 'open %s;cd %s;' % (remoteLogin, remotePath)
+        self.cmdpre += self.lftpsettings
+        self.cmdpost = ''
 
     def add(self, command):
-        self.commandList.add(command)
+        self.commandList.append(command)
         
     def get(self):
-        return self.cmdpre + '\n'.join(self.commandList) + self.cmdpost
+        return self.cmdpre + ';'.join(self.commandList) + self.cmdpost
     
     def clear(self):
         self.commandList = []
 
-def runLftp(cmdscript):
-    return Popen(['lftp', cmdscript], stdout=PIPE).communicate()[0]
+    def getLogFile(self):
+        return self.lftp_logfile
 
 
-def getRemoteNfoList():
+def runLftp(lftpcmd, watch=False):
+    lrun = ['lftp', '-c', lftpcmd.get()]
+    process = Popen(lrun, stdout=PIPE)
+    if watch:
+        logf = lftpcmd.getLogFile()
+        while process.poll() is None:
+            print file(logf, "r").readlines()[-1]
+            time.sleep(2)
+    return Popen(lrun, stdout=PIPE).communicate()[0]
+
+
+def getRemoteNfoList(remote=remote,remotepath=remotepath):
+    cleanTemp()
     commands = lftpcommand(remote, remotepath)
     commands.add('find | grep nfo')
 
-    mirrorFileList = runLftp(commands.get())
-    print mirrorFileList
+    mirrorFileList = runLftp(commands)
+    #print mirrorFileList
     commands.clear()
     commands.add('lcd temp')
     for line in mirrorFileList.split('\n'):
         if line != '':
             commands.add('mget -d %s' % (line))
-    print commands
-    runLftp(commands.get())
+    #print commands
+    runLftp(commands)
     return mirrorFileList.split('\n')
 
 
@@ -97,6 +142,7 @@ def getMoviesToFetch(nfos):
 # Loop through nfo files, find imdb id
     mirrordirs = []
     for nfo in nfos:
+<<<<<<< HEAD
         dir = '/'.join(nfo.split('/')[:-1])
         file = nfo[-1]
         imdb = getImdbID(nfo)
@@ -105,19 +151,57 @@ def getMoviesToFetch(nfos):
             if requireMinimumImdbrating and getImdbRating(imdb) >= minimumImdbRating:
                 mirrordirs.append(dir)
         return mirrordirs
+=======
+        if nfo != '':
+            dir = '/'.join(nfo.split('/')[:-1])
+            file = nfo[-1]
+            imdb = getImdbID(nfo.replace('./', './temp/'))
+            logtofile('NFO File: ' + nfo + ', imdb id: ' + imdb)
+            xbmc = xbmcHasMovie(imdb)
+            if imdb and not xbmc:
+                mirrordirs.append(dir)
+    return mirrordirs
+>>>>>>> 02942474179bdd06da8e4dca7ed8ce675711764b
 
 
 def fetchMovies(directories):
     commands = lftpcommand(remote, remotepath)
     commands.add('lcd %s' % (localpath))
+    commands.add('pwd')
     for d in directories:
-        commands.add(d)
+        commands.add('mirror -c -P%i %s' % (lftp_parallell, d))
     # Download
-    runLftp(commands.get())
+    logtofile('Running with commands: ' + commands.get())
+    runLftp(commands)
+
+
+<<<<<<< HEAD
+if __name__ == "__main__":
+    print sys.argv
+=======
+def cleanTemp():
+    tempdir = os.getcwd() + '/temp'
+    if os.path.exists(tempdir):
+        shutil.rmtree(tempdir)
+    if not os.path.exists(tempdir):
+        os.makedirs(tempdir)
+
+
+def run_selective_sync():
+>>>>>>> 02942474179bdd06da8e4dca7ed8ce675711764b
+    nfoFiles = getRemoteNfoList()
+    logtofile('NFO Files: ')
+    logtofile(nfoFiles)
+    downMovies = getMoviesToFetch(nfoFiles)
+<<<<<<< HEAD
+    fetchMovies(downMovies)
+=======
+    logtofile('Folders to download:')
+    logtofile(downMovies)
+    fetchMovies(downMovies)
 
 
 if __name__ == "__main__":
-    print sys.argv
-    nfoFiles = getRemoteNfoList()
-    downMovies = getMoviesToFetch(nfoFiles)
-    fetchMovies(downMovies)
+    run_selective_sync()
+
+>>>>>>> 02942474179bdd06da8e4dca7ed8ce675711764b
