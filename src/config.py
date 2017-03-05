@@ -1,0 +1,16 @@
+mysqlLogin = 'xbmc'
+mysqlPassword = 'xbmc'
+mysqlDatabase = 'xbmc_video107'
+mysqlHost = 'localhost'
+remoteUser = 'remoteusername'
+remotePass = 'remotepassword'
+remoteHost = 'sftp://remote.hostname.com'
+remotepath = '~/private/downloadthis/'
+localpath = '~/from_remote'
+lftp_parallell = 4
+debug = True
+logfile = 'debug.log'
+requireMinimumImdbRating = True
+minimumImdbRating = 7.0 # Movies with rating above 7 will be allowed
+lowerImdbRating = 3.0   # Movies with rating below 3 will be allowed
+only_folders_newer_than = None # Set to None if you want to download regardless of the folder age. Set to a date if you require a minimum creation date on the remote folders

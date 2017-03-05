@@ -4,87 +4,18 @@ Created on 28. mar. 2015
 @author: GGreibesland
 '''
 from subprocess import Popen, PIPE, STDOUT
-import datetime
-import MySQLdb
-import re
 import sys
 import shutil
-import io
-import time
 import os
+from config import *
+from imdb import getImdbID, getImdbRating
+from log import logtofile
 
-
-mysqlLogin = 'xbmc'
-mysqlPassword = 'xbmc'
-mysqlDatabase = 'xbmc_video78'
-mysqlHost = 'localhost'
-<<<<<<< HEAD
-remote = '-i %s,%s %s' % (sys.argv[0], sys.argv[1], sys.argv[2])
-remotepath = '~/private/rtorrent/data/complete451'
-localpath = '/mnt/raid5/.downloads/complete'
-requireMinimumImdbRating = True
-minimumImdbRating = 7.0
-
-def getImdbRating(imdb):
-    br = Browser()
-    link = br.open("http://www.imdb.com/title/" + imdb)
-    soup = BeautifulSoup(link.read())
-    #try :
-    i = 0
-    rating = soup.find('span',attrs={'itemprop' : 'ratingValue'}).text
-    return float(rating)
-=======
-remoteUser = ''
-remotePass = ''
-remoteHost = ''
-remotepath = ''
-localpath = ''
-lftp_parallell = 4
-debug = True
-logfile = 'debug.log'
-
-
-def logtofile(msg):
-    if debug:
-        timestamp = time.time()
-        humanreadable = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-        try:
-            f = open(logfile,'a')
-            f.write(str(humanreadable) + ' ' + str(msg) + '\n')
-            f.close()
-        except IOError:
-            print 'IO error occured. Unable to write to log.'
-
-
-###############################################################################
 
 if not remoteUser or not remoteHost or not remotePass:
     remote = '-u %s,%s %s' % (sys.argv[0], sys.argv[1], sys.argv[2])
 else:
     remote = '-u %s,%s %s' % (remoteUser, remotePass, remoteHost)
-
->>>>>>> 02942474179bdd06da8e4dca7ed8ce675711764b
-
-def getImdbID(nfo):
-    p = re.compile('tt\d{7}')  # Pattern for finding imdb id
-    with open(nfo,'r') as f:
-        nfoFile = ''.join(f.readlines())
-    found = p.search(nfoFile)
-    return found.group() if found else None
-
-
-def xbmcHasMovie(imdb):
-    db=MySQLdb.connect(host=mysqlHost, user=mysqlLogin, passwd=mysqlPassword, db=mysqlDatabase)
-    cursor = db.cursor()
-    
-    query = ("SELECT COUNT(c00) from movieview WHERE c09 = '%s'") % (imdb)
-    cursor.execute(query)
-    
-    result = cursor.fetchone()[0]
-    cursor.close()
-    db.close()
-    logtofile('Tried %s, got: %d' % (imdb, result))
-    return True if result > 0 else False
 
 
 class lftpcommand:
@@ -131,7 +62,7 @@ def getRemoteNfoList(remote=remote,remotepath=remotepath):
     commands.add('lcd temp')
     for line in mirrorFileList.split('\n'):
         if line != '':
-            commands.add('mget -d %s' % (line))
+            commands.add('mget -d "%s"' % (line))
     #print commands
     runLftp(commands)
     return mirrorFileList.split('\n')
@@ -142,43 +73,40 @@ def getMoviesToFetch(nfos):
 # Loop through nfo files, find imdb id
     mirrordirs = []
     for nfo in nfos:
-<<<<<<< HEAD
-        dir = '/'.join(nfo.split('/')[:-1])
-        file = nfo[-1]
-        imdb = getImdbID(nfo)
-        xbmc = xbmcHasMovie(imdb)
-        if imdb and not xbmc:
-            if requireMinimumImdbrating and getImdbRating(imdb) >= minimumImdbRating:
-                mirrordirs.append(dir)
-        return mirrordirs
-=======
         if nfo != '':
             dir = '/'.join(nfo.split('/')[:-1])
             file = nfo[-1]
             imdb = getImdbID(nfo.replace('./', './temp/'))
-            logtofile('NFO File: ' + nfo + ', imdb id: ' + imdb)
-            xbmc = xbmcHasMovie(imdb)
+	    if not imdb:
+	        logtofile('No imdb id found in ' + nfo)
+            else:
+                logtofile('NFO File: ' + nfo + ', imdb id: ' + imdb)
+            xbmc = xbmcHasMovie(imdb, mysqlHost, mysqlLogin, mysqlPassword, mysqlDatabase)
             if imdb and not xbmc:
-                mirrordirs.append(dir)
+                if requireMinimumImdbRating:
+		    rating = getImdbRating(imdb)
+ 		else:
+		    rating = 99.0
+		if rating >= minimumImdbRating or rating <= lowerImdbRating:
+                    mirrordirs.append(dir)
+		elif rating < minimumImdbRating:
+                    logtofile("Movie is not within the required rating score " + imdb + " with " + str(rating))
+		
     return mirrordirs
->>>>>>> 02942474179bdd06da8e4dca7ed8ce675711764b
 
 
 def fetchMovies(directories):
     commands = lftpcommand(remote, remotepath)
-    commands.add('lcd %s' % (localpath))
+    commands.add('lcd "%s"' % (localpath))
     commands.add('pwd')
     for d in directories:
-        commands.add('mirror -c -P%i %s' % (lftp_parallell, d))
+       commands.add('mirror -c -P%i "%s"' % (lftp_parallell, d))
+    commands.add('quit')
     # Download
     logtofile('Running with commands: ' + commands.get())
     runLftp(commands)
 
 
-<<<<<<< HEAD
-if __name__ == "__main__":
-    print sys.argv
-=======
 def cleanTemp():
     tempdir = os.getcwd() + '/temp'
     if os.path.exists(tempdir):
@@ -188,14 +116,10 @@ def cleanTemp():
 
 
 def run_selective_sync():
->>>>>>> 02942474179bdd06da8e4dca7ed8ce675711764b
     nfoFiles = getRemoteNfoList()
     logtofile('NFO Files: ')
     logtofile(nfoFiles)
     downMovies = getMoviesToFetch(nfoFiles)
-<<<<<<< HEAD
-    fetchMovies(downMovies)
-=======
     logtofile('Folders to download:')
     logtofile(downMovies)
     fetchMovies(downMovies)
@@ -204,4 +128,3 @@ def run_selective_sync():
 if __name__ == "__main__":
     run_selective_sync()
 
->>>>>>> 02942474179bdd06da8e4dca7ed8ce675711764b
