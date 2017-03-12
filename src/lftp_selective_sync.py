@@ -54,8 +54,18 @@ def runLftp(lftpcmd, watch=False):
 def getRemoteNfoList(remote=remote,remotepath=remotepath):
     cleanTemp()
     commands = lftpcommand(remote, remotepath)
-    commands.add('find | grep nfo')
-
+    getnfoscommand = 'find | grep .nfo'
+    if only_folders_newer_than:
+        try:
+            maxage = int(only_folders_newer_than)
+            # Append ctime argument to the "find" command.
+            getnfoscommand += ' -ctime ' + maxage
+        except ValueError:
+            err = 'Invalid value in "only_folders_newer_than" setting'
+            print(err)
+            logfile(err)
+        
+    commands.add(getnfoscommand)
     mirrorFileList = runLftp(commands)
     #print mirrorFileList
     commands.clear()
