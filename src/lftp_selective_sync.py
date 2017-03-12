@@ -21,22 +21,6 @@ mysqlLogin = 'xbmc'
 mysqlPassword = 'xbmc'
 mysqlDatabase = 'xbmc_video78'
 mysqlHost = 'localhost'
-<<<<<<< HEAD
-remote = '-i %s,%s %s' % (sys.argv[0], sys.argv[1], sys.argv[2])
-remotepath = '~/private/rtorrent/data/complete451'
-localpath = '/mnt/raid5/.downloads/complete'
-requireMinimumImdbRating = True
-minimumImdbRating = 7.0
-
-def getImdbRating(imdb):
-    br = Browser()
-    link = br.open("http://www.imdb.com/title/" + imdb)
-    soup = BeautifulSoup(link.read())
-    #try :
-    i = 0
-    rating = soup.find('span',attrs={'itemprop' : 'ratingValue'}).text
-    return float(rating)
-=======
 remoteUser = ''
 remotePass = ''
 remoteHost = ''
@@ -78,7 +62,6 @@ if not remoteUser or not remoteHost or not remotePass:
 else:
     remote = '-u %s,%s %s' % (remoteUser, remotePass, remoteHost)
 
->>>>>>> 02942474179bdd06da8e4dca7ed8ce675711764b
 
 def getImdbID(nfo):
     p = re.compile('tt\d{7}')  # Pattern for finding imdb id
@@ -157,16 +140,6 @@ def getMoviesToFetch(nfos):
 # Loop through nfo files, find imdb id
     mirrordirs = []
     for nfo in nfos:
-<<<<<<< HEAD
-        dir = '/'.join(nfo.split('/')[:-1])
-        file = nfo[-1]
-        imdb = getImdbID(nfo)
-        xbmc = xbmcHasMovie(imdb)
-        if imdb and not xbmc:
-            if requireMinimumImdbrating and getImdbRating(imdb) >= minimumImdbRating:
-                mirrordirs.append(dir)
-        return mirrordirs
-=======
         if nfo != '':
             dir = '/'.join(nfo.split('/')[:-1])
             file = nfo[-1]
@@ -187,7 +160,6 @@ def getMoviesToFetch(nfos):
                     logtofile("Movie is not within the required rating score " + imdb + " with " + str(rating))
 		
     return mirrordirs
->>>>>>> 02942474179bdd06da8e4dca7ed8ce675711764b
 
 
 def fetchMovies(directories):
@@ -202,10 +174,6 @@ def fetchMovies(directories):
     runLftp(commands)
 
 
-<<<<<<< HEAD
-if __name__ == "__main__":
-    print sys.argv
-=======
 def cleanTemp():
     tempdir = os.getcwd() + '/temp'
     if os.path.exists(tempdir):
@@ -215,14 +183,10 @@ def cleanTemp():
 
 
 def run_selective_sync():
->>>>>>> 02942474179bdd06da8e4dca7ed8ce675711764b
     nfoFiles = getRemoteNfoList()
     logtofile('NFO Files: ')
     logtofile(nfoFiles)
     downMovies = getMoviesToFetch(nfoFiles)
-<<<<<<< HEAD
-    fetchMovies(downMovies)
-=======
     logtofile('Folders to download:')
     logtofile(downMovies)
     fetchMovies(downMovies)
@@ -230,5 +194,3 @@ def run_selective_sync():
 
 if __name__ == "__main__":
     run_selective_sync()
-
->>>>>>> 02942474179bdd06da8e4dca7ed8ce675711764b
