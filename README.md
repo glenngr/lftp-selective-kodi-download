@@ -1,5 +1,17 @@
 # lftp-selective-kodi-sync
 Fetches movies you don't have in your Kodi SQL Library from a remote server via LFTP
+You can also include only certain imdb ratings and choose to only download directories that has changed during the last x days.
+
+## Prerequisites
+The tool relies on the pip modules that are listed in **requirements.txt**
+To install them, issue the following command: `pip install -r requirements.txt`
+
+### Extra info for Ubuntu and Debian users
+For the MySQL-python package to work, you need some additional packages.
+Use the command below to install them
+```
+sudo apt-get install python-pip python-dev libmysqlclient-dev
+```
 
 ## Setup
 Edit the configuration section in lftp_selective_sync.py to get started.
@@ -17,3 +29,6 @@ The **debug** variable can be set to True if you want extra logging.
 
 The requireMinimumImdbRating can be set to True if you only want to download directories with certain imdb ratings.
 If you set this to true, set up the minimum and maximum rating in the variables **mimimumImdbRating** and **lowerImdbRating**.
+
+The **only_folders_newer_than** setting can be used to only download folders that are newer than a number of days of your choosing.
+Leave the setting at "None" if you don't want to use this feature. If you want to limit to only the last three days, set it to 3.
