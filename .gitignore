@@ -1,4 +1,4 @@
 src/*.log
 src/*.txt
 src/*.pyc
-
+src/temp/
