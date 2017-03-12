@@ -15,5 +15,5 @@ The **lftp_parallell** variable is how many parallell connections you want while
 
 The **debug** variable can be set to True if you want extra logging.
 
-The requireMinimumImdbRating can be set to True if you only want to download directories with certain imdb ratings.
+The **requireMinimumImdbRating** can be set to True if you only want to download directories with certain imdb ratings.
 If you set this to true, set up the minimum and maximum rating in the variables **mimimumImdbRating** and **lowerImdbRating**.
