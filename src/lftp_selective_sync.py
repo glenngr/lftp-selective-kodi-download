@@ -9,8 +9,10 @@ import shutil
 import os
 from config import *
 from imdb import getImdbID, getImdbRating
-from log import logtofile
+from log import Logger as SimpleLogger
+from xbmc import xbmcHasMovie
 
+logger = SimpleLogger('debug' if debug else 'info', logfile)
 
 if not remoteUser or not remoteHost or not remotePass:
     remote = '-u %s,%s %s' % (sys.argv[0], sys.argv[1], sys.argv[2])
@@ -59,15 +61,17 @@ def getRemoteNfoList(remote=remote,remotepath=remotepath):
         try:
             maxage = int(only_folders_newer_than)
             # Append ctime argument to the "find" command.
-            getnfoscommand += ' -ctime ' + maxage
+            getnfoscommand += ' -ctime ' + str(maxage)
+            logger.info('Valid only_folders_newer_than setting found. Only getting nfo files newer than %d days' % maxage)
         except ValueError:
             err = 'Invalid value in "only_folders_newer_than" setting'
             print(err)
-            logfile(err)
+            logger.info(err)
         
     commands.add(getnfoscommand)
     mirrorFileList = runLftp(commands)
-    #print mirrorFileList
+    logger.debug('The following nfo finds were found:')
+    logger.debug(mirrorFileList)
     commands.clear()
     commands.add('lcd temp')
     for line in mirrorFileList.split('\n'):
@@ -88,9 +92,9 @@ def getMoviesToFetch(nfos):
             file = nfo[-1]
             imdb = getImdbID(nfo.replace('./', './temp/'))
 	    if not imdb:
-	        logtofile('No imdb id found in ' + nfo)
+	        logger.info('No imdb id found in ' + nfo)
             else:
-                logtofile('NFO File: ' + nfo + ', imdb id: ' + imdb)
+                logger.debug('NFO File: ' + nfo + ', imdb id: ' + imdb)
             xbmc = xbmcHasMovie(imdb, mysqlHost, mysqlLogin, mysqlPassword, mysqlDatabase)
             if imdb and not xbmc:
                 if requireMinimumImdbRating:
@@ -100,7 +104,7 @@ def getMoviesToFetch(nfos):
 		if rating >= minimumImdbRating or rating <= lowerImdbRating:
                     mirrordirs.append(dir)
 		elif rating < minimumImdbRating:
-                    logtofile("Movie is not within the required rating score " + imdb + " with " + str(rating))
+                    logger.info("Movie is not within the required rating score " + imdb + " with " + str(rating))
 		
     return mirrordirs
 
@@ -113,7 +117,7 @@ def fetchMovies(directories):
        commands.add('mirror -c -P%i "%s"' % (lftp_parallell, d))
     commands.add('quit')
     # Download
-    logtofile('Running with commands: ' + commands.get())
+    logger.debug('Running with commands: ' + commands.get())
     runLftp(commands)
 
 
@@ -127,11 +131,11 @@ def cleanTemp():
 
 def run_selective_sync():
     nfoFiles = getRemoteNfoList()
-    logtofile('NFO Files: ')
-    logtofile(nfoFiles)
+    logger.debug('NFO Files: ')
+    logger.debug(nfoFiles)
     downMovies = getMoviesToFetch(nfoFiles)
-    logtofile('Folders to download:')
-    logtofile(downMovies)
+    logger.debug('Folders to download:')
+    logger.debug(downMovies)
     fetchMovies(downMovies)
 
 
