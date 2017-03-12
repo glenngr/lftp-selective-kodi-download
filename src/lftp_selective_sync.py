@@ -53,33 +53,23 @@ def runLftp(lftpcmd, watch=False):
     return Popen(lrun, stdout=PIPE).communicate()[0]
 
 
-def getRemoteNfoList(remote=remote,remotepath=remotepath):
+def downloadRemoteNfos(remote=remote,remotepath=remotepath):
     cleanTemp()
     commands = lftpcommand(remote, remotepath)
-    getnfoscommand = 'find | grep .nfo'
+    getnfoscommand = 'mirror -i ./*.nfo'
     if only_folders_newer_than:
         try:
             maxage = int(only_folders_newer_than)
-            # Append ctime argument to the "find" command.
-            getnfoscommand += ' -ctime ' + str(maxage)
+            # Only get files with creating date between now and maxage days ago.
+            getnfoscommand += ' --newer-than=now-%sdays' % str(maxage)
             logger.info('Valid only_folders_newer_than setting found. Only getting nfo files newer than %d days' % maxage)
         except ValueError:
             err = 'Invalid value in "only_folders_newer_than" setting'
             print(err)
             logger.info(err)
-        
+    commands.add('lcd temp')        
     commands.add(getnfoscommand)
-    mirrorFileList = runLftp(commands)
-    logger.debug('The following nfo finds were found:')
-    logger.debug(mirrorFileList)
-    commands.clear()
-    commands.add('lcd temp')
-    for line in mirrorFileList.split('\n'):
-        if line != '':
-            commands.add('mget -d "%s"' % (line))
-    #print commands
     runLftp(commands)
-    return mirrorFileList.split('\n')
 
 
 def getMoviesToFetch(nfos):
@@ -90,7 +80,7 @@ def getMoviesToFetch(nfos):
         if nfo != '':
             dir = '/'.join(nfo.split('/')[:-1])
             file = nfo[-1]
-            imdb = getImdbID(nfo.replace('./', './temp/'))
+            imdb = getImdbID(nfo)
 	    if not imdb:
 	        logger.info('No imdb id found in ' + nfo)
             else:
@@ -102,7 +92,7 @@ def getMoviesToFetch(nfos):
  		else:
 		    rating = 99.0
 		if rating >= minimumImdbRating or rating <= lowerImdbRating:
-                    mirrordirs.append(dir)
+                    mirrordirs.append(dir.replace('temp/', ''))
 		elif rating < minimumImdbRating:
                     logger.info("Movie is not within the required rating score " + imdb + " with " + str(rating))
 		
@@ -128,9 +118,18 @@ def cleanTemp():
     if not os.path.exists(tempdir):
         os.makedirs(tempdir)
 
+def getLocalNfoFiles():
+    nfos = []
+    for root, dirs, files in os.walk('./temp'):
+        for file in files:
+            if file.endswith('.nfo'):
+                nfos.append(os.path.join(root, file))
+    return nfos
+
 
 def run_selective_sync():
-    nfoFiles = getRemoteNfoList()
+    downloadRemoteNfos()
+    nfoFiles = getLocalNfoFiles()
     logger.debug('NFO Files: ')
     logger.debug(nfoFiles)
     downMovies = getMoviesToFetch(nfoFiles)
