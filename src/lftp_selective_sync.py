@@ -24,7 +24,7 @@ class lftpcommand:
     def __init__(self, remoteLogin, remotePath):
         self.commandList = []
         self.lftp_logfile = os.getcwd() + '/output.log'
-        self.lftpsettings = 'set xfer:eta-period 5;set xfer:log true\,set xfer:log-file %s;set xfer:rate-period 20;' % (self.lftp_logfile)
+        self.lftpsettings = 'set xfer:eta-period 5;set xfer:log true;set xfer:log-file %s;set xfer:rate-period 20;' % (self.lftp_logfile)
         self.cmdpre = 'open %s;cd %s;' % (remoteLogin, remotePath)
         self.cmdpre += self.lftpsettings
         self.cmdpost = ''
